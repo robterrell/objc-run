@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function main
+{
+	if [[ $# -lt 1 ]]; then 
+		echo "swift-run usage: swift-run file.swift [params]" 1>&2
+		exit 1
+	fi
+
+	filepath="$1"
+	filename="$(basename "$filepath")"
+	appname="${filename%.*}"
+	target="$(dirname "$filepath")/$appname"
+	shift
+
+	# check if there's already a file with the same name as our compiled app, if so exit
+	if [[ -f "$target" ]]; then
+		echo "objc-run: file already exists at $dirname/$appname ... exiting" 1>&2
+		exit 1
+	fi
+
+	# compile the file
+	# remove shebangs on first line, first chars only
+	xcrun swift "$target" <(awk 'NR>1 || !/^#!/' "$filepath")
+	swiftExitCode=$?
+
+	# on clang success, run compiled application and remove it
+	if [[ $switftExitCode -eq 0 ]]; then 
+		"$target" "$@"
+		rm -f "$target"
+	else
+		echo "swift-run: clang returned with error" 1>&2
+		exit 1
+	fi
+
+	# exit explicitly with no error
+	exit 0
+}
+
+
+main "$@"
